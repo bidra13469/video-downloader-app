@@ -4,8 +4,10 @@ A Flask-based API for downloading videos from various platforms using yt-dlp.
 
 ## Features
 
-- Fetch video information from YouTube and other platforms
+- Fetch video information from YouTube, TikTok, Instagram, Twitter, and many other platforms
 - Get download links for different video and audio formats
+- Platform detection and platform-specific handling
+- Detailed error messages with troubleshooting suggestions
 - API key authentication for security
 - CORS support for cross-origin requests
 
@@ -45,7 +47,45 @@ If you don't set an API key, a random one will be generated and printed to the c
 
 ### GET /
 
-Returns basic information about the API.
+Returns basic information about the API, including a list of supported platforms.
+
+**Response:**
+```json
+{
+  "name": "Video Downloader API",
+  "version": "1.1.0",
+  "description": "API for downloading videos from various platforms using yt-dlp",
+  "supported_platforms": ["youtube", "tiktok", "instagram", "facebook", "twitter", "vimeo", "reddit", "dailymotion", "twitch", "soundcloud"]
+}
+```
+
+### GET /api/supported-platforms
+
+Returns detailed information about all supported platforms, including example URLs and supported features.
+
+**Response:**
+```json
+{
+  "youtube": {
+    "name": "YouTube",
+    "example_urls": [
+      "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "https://youtu.be/dQw4w9WgXcQ"
+    ],
+    "supported_features": ["video", "audio", "thumbnails", "metadata"]
+  },
+  "tiktok": {
+    "name": "TikTok",
+    "example_urls": [
+      "https://www.tiktok.com/@username/video/1234567890123456789",
+      "https://vm.tiktok.com/ABCDEF/"
+    ],
+    "supported_features": ["video", "thumbnails", "metadata"],
+    "notes": "Some TikTok videos may be region-restricted or require authentication"
+  },
+  // ... other platforms
+}
+```
 
 ### GET /api/get-key
 
@@ -67,7 +107,7 @@ Fetches detailed information about a video.
 X-API-Key: your_api_key
 ```
 
-**Response:**
+**Response (Success):**
 ```json
 {
   "id": "video_id",
@@ -76,6 +116,7 @@ X-API-Key: your_api_key
   "duration": "00:05:30",
   "view_count": "1.5M views",
   "uploader": "Channel Name",
+  "platform": "youtube",
   "formats": [
     {
       "format_id": "22",
@@ -91,6 +132,20 @@ X-API-Key: your_api_key
       "abr": 128
     },
     // ...more formats
+  ]
+}
+```
+
+**Response (Error):**
+```json
+{
+  "error": "Could not download this TikTok video. This might be due to TikTok's restrictions or the video being private.",
+  "platform": "tiktok",
+  "original_error": "Unable to download webpage: HTTP Error 403: Forbidden",
+  "suggestions": [
+    "Make sure the TikTok video is public and not deleted",
+    "Try using the share link directly from the TikTok app",
+    "Some TikTok videos may be region-restricted"
   ]
 }
 ```
@@ -111,7 +166,7 @@ Returns organized download links for different video and audio formats.
 X-API-Key: your_api_key
 ```
 
-**Response:**
+**Response (Success):**
 ```json
 {
   "video_with_audio": [
@@ -133,7 +188,10 @@ X-API-Key: your_api_key
   ],
   "audio_only": [
     // Audio-only formats
-  ]
+  ],
+  "platform": "youtube",
+  "title": "Video Title",
+  "thumbnail": "thumbnail_url"
 }
 ```
 
@@ -161,11 +219,11 @@ async function getVideoInfo(url) {
       },
       body: JSON.stringify({ url })
     });
-    
+
     if (!response.ok) {
       throw new Error('Failed to fetch video info');
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error('Error fetching video info:', error);
